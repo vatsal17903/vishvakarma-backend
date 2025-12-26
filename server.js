@@ -45,7 +45,8 @@ app.use(session({
         secure: isProduction, // Use secure cookies in production
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: isProduction ? 'none' : 'lax' // Required for cross-domain cookies
+        sameSite: isProduction ? 'none' : 'lax', // Required for cross-domain cookies
+        domain: isProduction ? '.softodoor.com' : undefined // Share cookies across subdomains
     }
 }));
 
