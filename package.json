@@ -1,0 +1,28 @@
+{
+    "name": "vishvakarma-backend",
+    "version": "1.0.0",
+    "description": "CRM for Construction & Interior Business - Backend",
+    "main": "server/index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node server/index.js",
+        "dev": "node server/index.js"
+    },
+    "keywords": [
+        "crm",
+        "construction",
+        "interior"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^4.21.1",
+        "express-session": "^1.18.1",
+        "mysql2": "^3.16.0",
+        "pdfkit": "^0.15.0",
+        "uuid": "^10.0.0"
+    }
+}
