@@ -86,7 +86,7 @@ FRONTEND_URL=https://vishvakarmaquotation.softodoor.com
 3. Configure:
    - **Document Root**: `/httpdocs/backend` (or wherever you uploaded backend)
    - **Application Mode**: Production
-   - **Application Startup File**: `server/index.js`
+   - **Application Startup File**: `server.js`
    - **Node.js Version**: 18.x or 20.x (latest LTS)
 
 4. **Optional Environment Variables** (or use .env file):
@@ -160,7 +160,7 @@ Should return a response (not 404).
 1. Check Plesk → Node.js → **Logs**
 2. Common issues:
    - Missing dependencies: Click **NPM Install**
-   - Wrong startup file: Should be `server/index.js`
+   - Wrong startup file: Should be `server.js`
    - Port conflict: Use PORT=3001 or different
 
 ### Frontend Showing Blank Page
@@ -209,7 +209,7 @@ npm run build
 | Frontend .env | `VITE_API_URL=https://apivkq.softodoor.com` |
 | Backend .env | `FRONTEND_URL=https://vishvakarmaquotation.softodoor.com` |
 | Backend Port | 3001 |
-| Node Startup File | `server/index.js` |
+| Node Startup File | `server.js` |
 
 ---
 

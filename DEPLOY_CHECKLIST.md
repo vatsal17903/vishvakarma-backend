@@ -53,7 +53,7 @@ This creates `frontend/dist/` folder.
 - [ ] Click **Enable Node.js**
 - [ ] Configure:
   - Document Root: `/httpdocs/backend`
-  - Application Startup File: `server/index.js`
+  - Application Startup File: `server.js`
   - Node.js Version: 18.x or 20.x
   - Application Mode: Production
 - [ ] Click **NPM Install**

@@ -72,7 +72,7 @@ npm run build
 - Create `.env` file with the content from Step 2
 - Enable Node.js in Plesk:
   - Document Root: `/httpdocs/backend` (adjust path)
-  - Application Startup File: `server/index.js`
+  - Application Startup File: `server.js`
   - Node.js Version: 18.x or 20.x
   - Click **NPM Install**
   - Click **Enable Node.js**
