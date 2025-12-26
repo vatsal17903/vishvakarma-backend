@@ -28,7 +28,7 @@ function formatDate(dateString) {
 }
 
 // Generate Quotation PDF
-router.get('/quotation/:id', requireCompany, async (req, res) => {
+router.get('/quotation/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [quotations] = await db.execute(`
       SELECT q.*, c.name as client_name, c.address as client_address, 
@@ -353,7 +353,7 @@ router.get('/quotation/:id', requireCompany, async (req, res) => {
 });
 
 // Generate Receipt PDF
-router.get('/receipt/:id', requireCompany, async (req, res) => {
+router.get('/receipt/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [receipts] = await db.execute(`
       SELECT r.*, q.quotation_number, q.grand_total as total_amount,
@@ -465,7 +465,7 @@ router.get('/receipt/:id', requireCompany, async (req, res) => {
 });
 
 // Generate Bill/Invoice PDF
-router.get('/bill/:id', requireCompany, async (req, res) => {
+router.get('/bill/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [bills] = await db.execute(`
       SELECT b.*, q.quotation_number, q.total_sqft, q.rate_per_sqft, q.bedroom_count,
@@ -616,7 +616,7 @@ router.get('/bill/:id', requireCompany, async (req, res) => {
 });
 
 // WhatsApp share URL generator
-router.get('/whatsapp/:type/:id', requireCompany, async (req, res) => {
+router.get('/whatsapp/:type/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const { type, id } = req.params;
         let message = '';

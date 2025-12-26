@@ -59,7 +59,7 @@ function validateDiscount(discountType, discountValue, subtotal) {
 }
 
 // Get all quotations for current company
-router.get('/', requireCompany, async (req, res) => {
+router.get('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [quotations] = await db.execute(`
       SELECT q.*, c.name as client_name, c.phone as client_phone
@@ -76,7 +76,7 @@ router.get('/', requireCompany, async (req, res) => {
 });
 
 // Get defaults for SqFt packages (Turnkey items)
-router.get('/defaults/sqft', requireCompany, async (req, res) => {
+router.get('/defaults/sqft', authenticateToken, requireCompany, async (req, res) => {
     try {
         const items = [];
 
@@ -166,7 +166,7 @@ router.get('/defaults/sqft', requireCompany, async (req, res) => {
 });
 
 // Get recent quotations
-router.get('/recent', requireCompany, async (req, res) => {
+router.get('/recent', authenticateToken, requireCompany, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 5;
         // mysql2 prepares limit as string if passed in params sometimes, better interpolate or ensure int
@@ -189,7 +189,7 @@ router.get('/recent', requireCompany, async (req, res) => {
 });
 
 // Get single quotation with items
-router.get('/:id', requireCompany, async (req, res) => {
+router.get('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [quotations] = await db.execute(`
       SELECT q.*, c.name as client_name, c.address as client_address, 
@@ -245,7 +245,7 @@ router.get('/:id', requireCompany, async (req, res) => {
 });
 
 // Create quotation
-router.post('/', requireCompany, async (req, res) => {
+router.post('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const {
             client_id, date, total_sqft, rate_per_sqft, package_id,
@@ -361,7 +361,7 @@ router.post('/', requireCompany, async (req, res) => {
 });
 
 // Update quotation
-router.put('/:id', requireCompany, async (req, res) => {
+router.put('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const {
             client_id, date, total_sqft, rate_per_sqft, package_id,
@@ -448,7 +448,7 @@ router.put('/:id', requireCompany, async (req, res) => {
 });
 
 // Delete quotation
-router.delete('/:id', requireCompany, async (req, res) => {
+router.delete('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         // Check for receipts
         const [receipts] = await db.execute('SELECT COUNT(*) as count FROM receipts WHERE quotation_id = ?', [req.params.id]);

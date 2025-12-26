@@ -6,7 +6,7 @@ import { authenticateToken, requireCompany } from '../middleware/auth.js';
 const router = express.Router();
 
 // Dashboard summary
-router.get('/dashboard', requireCompany, async (req, res) => {
+router.get('/dashboard', authenticateToken, requireCompany, async (req, res) => {
   try {
     const companyId = req.user.companyId;
 
@@ -69,7 +69,7 @@ router.get('/dashboard', requireCompany, async (req, res) => {
 });
 
 // Report with date filters
-router.get('/summary', requireCompany, async (req, res) => {
+router.get('/summary', authenticateToken, requireCompany, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
     const companyId = req.user.companyId;
@@ -131,7 +131,7 @@ router.get('/summary', requireCompany, async (req, res) => {
 });
 
 // Bedroom-wise report
-router.get('/bedroom-wise', requireCompany, async (req, res) => {
+router.get('/bedroom-wise', authenticateToken, requireCompany, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
     const companyId = req.user.companyId;
@@ -164,7 +164,7 @@ router.get('/bedroom-wise', requireCompany, async (req, res) => {
 });
 
 // Project-wise report
-router.get('/project-wise', requireCompany, async (req, res) => {
+router.get('/project-wise', authenticateToken, requireCompany, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
     const companyId = req.user.companyId;
@@ -202,7 +202,7 @@ router.get('/project-wise', requireCompany, async (req, res) => {
 });
 
 // Monthly trend report
-router.get('/monthly-trend', requireCompany, async (req, res) => {
+router.get('/monthly-trend', authenticateToken, requireCompany, async (req, res) => {
   try {
     const companyId = req.user.companyId;
     const year = req.query.year || new Date().getFullYear();

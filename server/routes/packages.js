@@ -6,7 +6,7 @@ import { authenticateToken, requireCompany } from '../middleware/auth.js';
 const router = express.Router();
 
 // Get all packages for current company
-router.get('/', requireCompany, async (req, res) => {
+router.get('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [packages] = await db.execute(`
       SELECT * FROM packages 
@@ -21,7 +21,7 @@ router.get('/', requireCompany, async (req, res) => {
 });
 
 // Get package with items
-router.get('/:id', requireCompany, async (req, res) => {
+router.get('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [packages] = await db.execute(`
       SELECT * FROM packages 
@@ -48,7 +48,7 @@ router.get('/:id', requireCompany, async (req, res) => {
 });
 
 // Create package
-router.post('/', requireCompany, async (req, res) => {
+router.post('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const { name, bhk_type, tier, base_rate_sqft, description, items } = req.body;
 
@@ -83,7 +83,7 @@ router.post('/', requireCompany, async (req, res) => {
 });
 
 // Update package
-router.put('/:id', requireCompany, async (req, res) => {
+router.put('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const { name, bhk_type, tier, base_rate_sqft, description, items } = req.body;
 
@@ -119,7 +119,7 @@ router.put('/:id', requireCompany, async (req, res) => {
 });
 
 // Delete package (soft delete)
-router.delete('/:id', requireCompany, async (req, res) => {
+router.delete('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         await db.execute('UPDATE packages SET is_active = 0 WHERE id = ? AND company_id = ?', [req.params.id, req.user.companyId]);
         res.json({ success: true, message: 'Package deleted successfully' });
@@ -130,7 +130,7 @@ router.delete('/:id', requireCompany, async (req, res) => {
 });
 
 // Get packages by tier
-router.get('/tier/:tier', requireCompany, async (req, res) => {
+router.get('/tier/:tier', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [packages] = await db.execute(`
       SELECT * FROM packages 

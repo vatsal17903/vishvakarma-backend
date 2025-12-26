@@ -28,7 +28,7 @@ async function generateBillNumber(companyCode) {
 }
 
 // Get all bills for current company
-router.get('/', requireCompany, async (req, res) => {
+router.get('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [bills] = await db.execute(`
       SELECT b.*, q.quotation_number, c.name as client_name
@@ -46,7 +46,7 @@ router.get('/', requireCompany, async (req, res) => {
 });
 
 // Get recent bills
-router.get('/recent', requireCompany, async (req, res) => {
+router.get('/recent', authenticateToken, requireCompany, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 5;
         const [bills] = await db.execute(`
@@ -66,7 +66,7 @@ router.get('/recent', requireCompany, async (req, res) => {
 });
 
 // Get single bill
-router.get('/:id', requireCompany, async (req, res) => {
+router.get('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [bills] = await db.execute(`
       SELECT b.*, q.quotation_number, q.total_sqft, q.rate_per_sqft, q.bedroom_count, q.bedroom_config,
@@ -101,7 +101,7 @@ router.get('/:id', requireCompany, async (req, res) => {
 });
 
 // Create bill from quotation
-router.post('/', requireCompany, async (req, res) => {
+router.post('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const { quotation_id, date, notes } = req.body;
 
@@ -162,7 +162,7 @@ router.post('/', requireCompany, async (req, res) => {
 });
 
 // Update bill
-router.put('/:id', requireCompany, async (req, res) => {
+router.put('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const { date, notes } = req.body;
 
@@ -180,7 +180,7 @@ router.put('/:id', requireCompany, async (req, res) => {
 });
 
 // Delete bill
-router.delete('/:id', requireCompany, async (req, res) => {
+router.delete('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [bills] = await db.execute('SELECT * FROM bills WHERE id = ? AND company_id = ?', [req.params.id, req.user.companyId]);
         const bill = bills[0];

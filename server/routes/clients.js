@@ -41,7 +41,7 @@ router.get('/:id', authenticateToken, requireCompany, async (req, res) => {
 });
 
 // Create client
-router.post('/', requireCompany, async (req, res) => {
+router.post('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const { name, address, phone, email, project_location, notes } = req.body;
 
@@ -63,7 +63,7 @@ router.post('/', requireCompany, async (req, res) => {
 });
 
 // Update client
-router.put('/:id', requireCompany, async (req, res) => {
+router.put('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const { name, address, phone, email, project_location, notes } = req.body;
 
@@ -82,7 +82,7 @@ router.put('/:id', requireCompany, async (req, res) => {
 });
 
 // Delete client
-router.delete('/:id', requireCompany, async (req, res) => {
+router.delete('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         // Check if client has quotations
         const [quotations] = await db.execute('SELECT COUNT(*) as count FROM quotations WHERE client_id = ?', [req.params.id]);
@@ -100,7 +100,7 @@ router.delete('/:id', requireCompany, async (req, res) => {
 });
 
 // Search clients
-router.get('/search/:query', requireCompany, async (req, res) => {
+router.get('/search/:query', authenticateToken, requireCompany, async (req, res) => {
     try {
         const query = `%${req.params.query}%`;
         const [clients] = await db.execute(`

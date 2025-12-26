@@ -6,7 +6,7 @@ import { authenticateToken, requireCompany } from '../middleware/auth.js';
 const router = express.Router();
 
 // Get all sqft default items
-router.get('/', requireCompany, async (req, res) => {
+router.get('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         // Check if sqft_defaults table exists
         const [tableExists] = await db.execute(`
@@ -111,7 +111,7 @@ async function getLegacyItems(req, res) {
 }
 
 // Save sqft default items
-router.put('/', requireCompany, async (req, res) => {
+router.put('/', authenticateToken, requireCompany, async (req, res) => {
     const { items } = req.body;
     const companyId = req.user.companyId;
 
