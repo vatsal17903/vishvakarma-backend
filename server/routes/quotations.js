@@ -1,18 +1,12 @@
 import express from 'express';
 import { db } from '../database/init.js';
 
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
+
 const router = express.Router();
 
 // Maximum discount allowed (30%)
 const MAX_DISCOUNT_PERCENT = 30;
-
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-    if (!req.session.companyId) {
-        return res.status(400).json({ error: 'Please select a company first' });
-    }
-    next();
-};
 
 // Generate quotation number
 async function generateQuotationNumber(companyCode) {
@@ -73,7 +67,7 @@ router.get('/', requireCompany, async (req, res) => {
       LEFT JOIN clients c ON q.client_id = c.id
       WHERE q.company_id = ?
       ORDER BY q.created_at DESC
-    `, [req.session.companyId]);
+    `, [req.user.companyId]);
         res.json(quotations);
     } catch (error) {
         console.error('Get quotations error:', error);
@@ -185,7 +179,7 @@ router.get('/recent', requireCompany, async (req, res) => {
       WHERE q.company_id = ?
       ORDER BY q.created_at DESC
       LIMIT ?
-    `, [req.session.companyId, limit]);
+    `, [req.user.companyId, limit]);
         // Note: if LIMIT ? fails with 'Undeclared variable', cast to int. mysql2 usually handles it.
         res.json(quotations);
     } catch (error) {
@@ -203,7 +197,7 @@ router.get('/:id', requireCompany, async (req, res) => {
       FROM quotations q
       LEFT JOIN clients c ON q.client_id = c.id
       WHERE q.id = ? AND q.company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const quotation = quotations[0];
 
@@ -290,7 +284,7 @@ router.post('/', requireCompany, async (req, res) => {
         if (!finalTerms || !finalPayment) {
             const [companyRows] = await db.execute(
                 'SELECT default_terms_conditions, default_payment_plan FROM companies WHERE id = ?',
-                [req.session.companyId]
+                [req.user.companyId]
             );
 
             if (companyRows.length > 0) {
@@ -300,7 +294,7 @@ router.post('/', requireCompany, async (req, res) => {
         }
 
         // Generate quotation number
-        const quotation_number = await generateQuotationNumber(req.session.companyCode);
+        const quotation_number = await generateQuotationNumber(req.user.companyCode);
 
         const [result] = await db.execute(`
       INSERT INTO quotations (
@@ -310,7 +304,7 @@ router.post('/', requireCompany, async (req, res) => {
         sgst_percent, sgst_amount, total_tax, grand_total, terms_conditions, payment_plan, notes, status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-            req.session.companyId, client_id, quotation_number, date,
+            req.user.companyId, client_id, quotation_number, date,
             (total_sqft && !isNaN(parseFloat(total_sqft))) ? parseFloat(total_sqft) : null,
             (rate_per_sqft && !isNaN(parseFloat(rate_per_sqft))) ? parseFloat(rate_per_sqft) : null,
             (parseInt(package_id) > 0) ? parseInt(package_id) : null,
@@ -413,7 +407,7 @@ router.put('/:id', requireCompany, async (req, res) => {
             bedroom_count || 1, JSON.stringify(bedroom_config || []),
             subtotal, discount_type, discount_value, discount_amount, taxable_amount,
             cgst, cgst_amount, sgst, sgst_amount, total_tax, grand_total,
-            terms_conditions, payment_plan, notes, status, req.params.id, req.session.companyId
+            terms_conditions, payment_plan, notes, status, req.params.id, req.user.companyId
         ]);
 
         // Update items
@@ -470,7 +464,7 @@ router.delete('/:id', requireCompany, async (req, res) => {
 
         await db.execute('DELETE FROM quotation_items WHERE quotation_id = ?', [req.params.id]);
         await db.execute('DELETE FROM quotation_column_config WHERE quotation_id = ?', [req.params.id]);
-        await db.execute('DELETE FROM quotations WHERE id = ? AND company_id = ?', [req.params.id, req.session.companyId]);
+        await db.execute('DELETE FROM quotations WHERE id = ? AND company_id = ?', [req.params.id, req.user.companyId]);
 
         res.json({ success: true, message: 'Quotation deleted successfully' });
     } catch (error) {

@@ -1,20 +1,14 @@
 import express from 'express';
 import { db } from '../database/init.js';
 
-const router = express.Router();
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
 
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-  if (!req.session.companyId) {
-    return res.status(400).json({ error: 'Please select a company first' });
-  }
-  next();
-};
+const router = express.Router();
 
 // Dashboard summary
 router.get('/dashboard', requireCompany, async (req, res) => {
   try {
-    const companyId = req.session.companyId;
+    const companyId = req.user.companyId;
 
     // Total quotations count and value
     const [quotationStats] = await db.execute(`
@@ -78,7 +72,7 @@ router.get('/dashboard', requireCompany, async (req, res) => {
 router.get('/summary', requireCompany, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const companyId = req.session.companyId;
+    const companyId = req.user.companyId;
 
     let dateFilter = '';
     const params = [companyId];
@@ -140,7 +134,7 @@ router.get('/summary', requireCompany, async (req, res) => {
 router.get('/bedroom-wise', requireCompany, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const companyId = req.session.companyId;
+    const companyId = req.user.companyId;
 
     let dateFilter = '';
     const params = [companyId];
@@ -173,7 +167,7 @@ router.get('/bedroom-wise', requireCompany, async (req, res) => {
 router.get('/project-wise', requireCompany, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const companyId = req.session.companyId;
+    const companyId = req.user.companyId;
 
     let dateFilter = '';
     const params = [companyId];
@@ -210,7 +204,7 @@ router.get('/project-wise', requireCompany, async (req, res) => {
 // Monthly trend report
 router.get('/monthly-trend', requireCompany, async (req, res) => {
   try {
-    const companyId = req.session.companyId;
+    const companyId = req.user.companyId;
     const year = req.query.year || new Date().getFullYear();
 
     // MySQL uses DATE_FORMAT instead of strftime.

@@ -1,15 +1,9 @@
 import express from 'express';
 import { db } from '../database/init.js';
 
-const router = express.Router();
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
 
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-    if (!req.session.companyId) {
-        return res.status(400).json({ error: 'Please select a company first' });
-    }
-    next();
-};
+const router = express.Router();
 
 // Generate receipt number
 async function generateReceiptNumber(companyCode) {
@@ -43,7 +37,7 @@ router.get('/', requireCompany, async (req, res) => {
       LEFT JOIN clients c ON q.client_id = c.id
       WHERE r.company_id = ?
       ORDER BY r.created_at DESC
-    `, [req.session.companyId]);
+    `, [req.user.companyId]);
         res.json(receipts);
     } catch (error) {
         console.error('Get receipts error:', error);
@@ -63,7 +57,7 @@ router.get('/recent', requireCompany, async (req, res) => {
       WHERE r.company_id = ?
       ORDER BY r.created_at DESC
       LIMIT ?
-    `, [req.session.companyId, limit]);
+    `, [req.user.companyId, limit]);
         res.json(receipts);
     } catch (error) {
         console.error('Get recent receipts error:', error);
@@ -78,7 +72,7 @@ router.get('/quotation/:quotationId', requireCompany, async (req, res) => {
       SELECT * FROM receipts 
       WHERE quotation_id = ? AND company_id = ?
       ORDER BY date DESC
-    `, [req.params.quotationId, req.session.companyId]);
+    `, [req.params.quotationId, req.user.companyId]);
 
         const totalReceived = receipts.reduce((sum, r) => sum + r.amount, 0);
 
@@ -104,7 +98,7 @@ router.get('/:id', requireCompany, async (req, res) => {
       LEFT JOIN quotations q ON r.quotation_id = q.id
       LEFT JOIN clients c ON q.client_id = c.id
       WHERE r.id = ? AND r.company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const receipt = receipts[0];
 
@@ -139,7 +133,7 @@ router.post('/', requireCompany, async (req, res) => {
         // Verify quotation exists and belongs to current company
         const [quotations] = await db.execute(`
       SELECT * FROM quotations WHERE id = ? AND company_id = ?
-    `, [quotation_id, req.session.companyId]);
+    `, [quotation_id, req.user.companyId]);
 
         const quotation = quotations[0];
 
@@ -148,12 +142,12 @@ router.post('/', requireCompany, async (req, res) => {
         }
 
         // Generate receipt number
-        const receipt_number = await generateReceiptNumber(req.session.companyCode);
+        const receipt_number = await generateReceiptNumber(req.user.companyCode);
 
         const [result] = await db.execute(`
       INSERT INTO receipts (company_id, quotation_id, receipt_number, date, amount, payment_mode, transaction_reference, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [req.session.companyId, quotation_id, receipt_number, date, amount, payment_mode, transaction_reference, notes]);
+    `, [req.user.companyId, quotation_id, receipt_number, date, amount, payment_mode, transaction_reference, notes]);
 
         // Update bill status if exists
         const [bills] = await db.execute('SELECT * FROM bills WHERE quotation_id = ?', [quotation_id]);
@@ -192,7 +186,7 @@ router.put('/:id', requireCompany, async (req, res) => {
         await db.execute(`
       UPDATE receipts SET date = ?, amount = ?, payment_mode = ?, transaction_reference = ?, notes = ?
       WHERE id = ? AND company_id = ?
-    `, [date, amount, payment_mode, transaction_reference, notes, req.params.id, req.session.companyId]);
+    `, [date, amount, payment_mode, transaction_reference, notes, req.params.id, req.user.companyId]);
 
         const [receipts] = await db.execute('SELECT * FROM receipts WHERE id = ?', [req.params.id]);
         const receipt = receipts[0];
@@ -228,7 +222,7 @@ router.put('/:id', requireCompany, async (req, res) => {
 // Delete receipt
 router.delete('/:id', requireCompany, async (req, res) => {
     try {
-        const [receipts] = await db.execute('SELECT * FROM receipts WHERE id = ? AND company_id = ?', [req.params.id, req.session.companyId]);
+        const [receipts] = await db.execute('SELECT * FROM receipts WHERE id = ? AND company_id = ?', [req.params.id, req.user.companyId]);
         const receipt = receipts[0];
 
         if (!receipt) {

@@ -1,24 +1,17 @@
 import express from 'express';
 import { db } from '../database/init.js';
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-    if (!req.session.companyId) {
-        return res.status(400).json({ error: 'Please select a company first' });
-    }
-    next();
-};
-
 // Get all clients for current company
-router.get('/', requireCompany, async (req, res) => {
+router.get('/', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [clients] = await db.execute(`
       SELECT * FROM clients 
       WHERE company_id = ? 
       ORDER BY created_at DESC
-    `, [req.session.companyId]);
+    `, [req.user.companyId]);
         res.json(clients);
     } catch (error) {
         console.error('Get clients error:', error);
@@ -27,12 +20,12 @@ router.get('/', requireCompany, async (req, res) => {
 });
 
 // Get single client
-router.get('/:id', requireCompany, async (req, res) => {
+router.get('/:id', authenticateToken, requireCompany, async (req, res) => {
     try {
         const [clients] = await db.execute(`
       SELECT * FROM clients 
       WHERE id = ? AND company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const client = clients[0];
 
@@ -59,7 +52,7 @@ router.post('/', requireCompany, async (req, res) => {
         const [result] = await db.execute(`
       INSERT INTO clients (company_id, name, address, phone, email, project_location, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [req.session.companyId, name, address || null, phone || null, email || null, project_location || null, notes || null]);
+    `, [req.user.companyId, name, address || null, phone || null, email || null, project_location || null, notes || null]);
 
         const [clients] = await db.execute('SELECT * FROM clients WHERE id = ?', [result.insertId]);
         res.status(201).json(clients[0]);
@@ -78,7 +71,7 @@ router.put('/:id', requireCompany, async (req, res) => {
       UPDATE clients 
       SET name = ?, address = ?, phone = ?, email = ?, project_location = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND company_id = ?
-    `, [name, address, phone, email, project_location, notes, req.params.id, req.session.companyId]);
+    `, [name, address, phone, email, project_location, notes, req.params.id, req.user.companyId]);
 
         const [clients] = await db.execute('SELECT * FROM clients WHERE id = ?', [req.params.id]);
         res.json(clients[0]);
@@ -98,7 +91,7 @@ router.delete('/:id', requireCompany, async (req, res) => {
             return res.status(400).json({ error: 'Cannot delete client with existing quotations' });
         }
 
-        await db.execute('DELETE FROM clients WHERE id = ? AND company_id = ?', [req.params.id, req.session.companyId]);
+        await db.execute('DELETE FROM clients WHERE id = ? AND company_id = ?', [req.params.id, req.user.companyId]);
         res.json({ success: true, message: 'Client deleted successfully' });
     } catch (error) {
         console.error('Delete client error:', error);
@@ -115,7 +108,7 @@ router.get('/search/:query', requireCompany, async (req, res) => {
       WHERE company_id = ? AND (name LIKE ? OR phone LIKE ? OR project_location LIKE ?)
       ORDER BY name
       LIMIT 20
-    `, [req.session.companyId, query, query, query]);
+    `, [req.user.companyId, query, query, query]);
         res.json(clients);
     } catch (error) {
         console.error('Search clients error:', error);

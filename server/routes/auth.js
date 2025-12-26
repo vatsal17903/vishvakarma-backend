@@ -1,8 +1,10 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { db } from '../database/init.js';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Login
 router.post('/login', async (req, res) => {
@@ -26,13 +28,19 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Set session - but DON'T set company (user must select each time)
-        req.session.userId = user.id;
-        req.session.userName = user.name;
-        req.session.companyId = null; // Force company selection every login
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                userId: user.id,
+                userName: user.name
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
 
         res.json({
             success: true,
+            token,
             user: {
                 id: user.id,
                 username: user.username,
@@ -46,29 +54,31 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Logout
+// Logout (with JWT, logout is handled on frontend by removing token)
 router.post('/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).json({ error: 'Logout failed' });
-        }
-        res.json({ success: true, message: 'Logged out successfully' });
-    });
+    res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Check session
+// Check session/token
 router.get('/session', (req, res) => {
-    if (req.session.userId) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+        return res.json({ authenticated: false });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
         res.json({
             authenticated: true,
             user: {
-                id: req.session.userId,
-                name: req.session.userName
+                id: decoded.userId,
+                name: decoded.userName
             },
-            companyId: req.session.companyId,
-            companyName: req.session.companyName
+            companyId: decoded.companyId || null,
+            companyName: decoded.companyName || null
         });
-    } else {
+    } catch (error) {
         res.json({ authenticated: false });
     }
 });
@@ -76,13 +86,16 @@ router.get('/session', (req, res) => {
 // Change password
 router.post('/change-password', async (req, res) => {
     try {
-        if (!req.session.userId) {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+
+        if (!token) {
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
+        const decoded = jwt.verify(token, JWT_SECRET);
         const { currentPassword, newPassword } = req.body;
 
-        const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+        const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [decoded.userId]);
         const user = users[0];
 
         if (!await bcrypt.compare(currentPassword, user.password)) {
@@ -90,7 +103,7 @@ router.post('/change-password', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await db.execute('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.session.userId]);
+        await db.execute('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, decoded.userId]);
 
         res.json({ success: true, message: 'Password changed successfully' });
     } catch (error) {

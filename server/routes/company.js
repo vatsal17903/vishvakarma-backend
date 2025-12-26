@@ -1,7 +1,9 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { db } from '../database/init.js';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Get all companies
 router.get('/', async (req, res) => {
@@ -14,13 +16,16 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Select company (set in session)
+// Select company (generate new token with company info)
 router.post('/select', async (req, res) => {
     try {
-        if (!req.session.userId) {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+
+        if (!token) {
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
+        const decoded = jwt.verify(token, JWT_SECRET);
         const { companyId } = req.body;
 
         const [companies] = await db.execute('SELECT * FROM companies WHERE id = ?', [companyId]);
@@ -30,12 +35,22 @@ router.post('/select', async (req, res) => {
             return res.status(404).json({ error: 'Company not found' });
         }
 
-        req.session.companyId = company.id;
-        req.session.companyName = company.name;
-        req.session.companyCode = company.code;
+        // Generate new token with company info
+        const newToken = jwt.sign(
+            {
+                userId: decoded.userId,
+                userName: decoded.userName,
+                companyId: company.id,
+                companyName: company.name,
+                companyCode: company.code
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
 
         res.json({
             success: true,
+            token: newToken,
             company: {
                 id: company.id,
                 name: company.name,
@@ -51,11 +66,19 @@ router.post('/select', async (req, res) => {
 // Get current company
 router.get('/current', async (req, res) => {
     try {
-        if (!req.session.companyId) {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+
+        if (!token) {
             return res.json({ company: null });
         }
 
-        const [companies] = await db.execute('SELECT * FROM companies WHERE id = ?', [req.session.companyId]);
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        if (!decoded.companyId) {
+            return res.json({ company: null });
+        }
+
+        const [companies] = await db.execute('SELECT * FROM companies WHERE id = ?', [decoded.companyId]);
         const company = companies[0];
         res.json({ company });
     } catch (error) {
@@ -67,15 +90,19 @@ router.get('/current', async (req, res) => {
 // Update company details
 router.put('/:id', async (req, res) => {
     try {
-        if (!req.session.userId) {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+
+        if (!token) {
             return res.status(401).json({ error: 'Not authenticated' });
         }
+
+        jwt.verify(token, JWT_SECRET);
 
         const { id } = req.params;
         const { name, address, phone, email, gst_number, bank_details, default_terms_conditions, default_payment_plan } = req.body;
 
         await db.execute(`
-      UPDATE companies 
+      UPDATE companies
       SET name = ?, address = ?, phone = ?, email = ?, gst_number = ?, bank_details = ?, default_terms_conditions = ?, default_payment_plan = ?
       WHERE id = ?
     `, [name, address, phone, email, gst_number, bank_details, default_terms_conditions, default_payment_plan, id]);

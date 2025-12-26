@@ -1,15 +1,9 @@
 import express from 'express';
 import { db } from '../database/init.js';
 
-const router = express.Router();
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
 
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-    if (!req.session.companyId) {
-        return res.status(400).json({ error: 'Please select a company first' });
-    }
-    next();
-};
+const router = express.Router();
 
 // Get all packages for current company
 router.get('/', requireCompany, async (req, res) => {
@@ -18,7 +12,7 @@ router.get('/', requireCompany, async (req, res) => {
       SELECT * FROM packages 
       WHERE company_id = ? AND is_active = 1
       ORDER BY tier, bhk_type
-    `, [req.session.companyId]);
+    `, [req.user.companyId]);
         res.json(packages);
     } catch (error) {
         console.error('Get packages error:', error);
@@ -32,7 +26,7 @@ router.get('/:id', requireCompany, async (req, res) => {
         const [packages] = await db.execute(`
       SELECT * FROM packages 
       WHERE id = ? AND company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const pkg = packages[0];
 
@@ -61,7 +55,7 @@ router.post('/', requireCompany, async (req, res) => {
         const [result] = await db.execute(`
       INSERT INTO packages (company_id, name, bhk_type, tier, base_rate_sqft, description)
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [req.session.companyId, name, bhk_type, tier, base_rate_sqft, description]);
+    `, [req.user.companyId, name, bhk_type, tier, base_rate_sqft, description]);
 
         const packageId = result.insertId;
 
@@ -97,7 +91,7 @@ router.put('/:id', requireCompany, async (req, res) => {
       UPDATE packages 
       SET name = ?, bhk_type = ?, tier = ?, base_rate_sqft = ?, description = ?
       WHERE id = ? AND company_id = ?
-    `, [name, bhk_type, tier, base_rate_sqft, description, req.params.id, req.session.companyId]);
+    `, [name, bhk_type, tier, base_rate_sqft, description, req.params.id, req.user.companyId]);
 
         // Update items
         if (items) {
@@ -127,7 +121,7 @@ router.put('/:id', requireCompany, async (req, res) => {
 // Delete package (soft delete)
 router.delete('/:id', requireCompany, async (req, res) => {
     try {
-        await db.execute('UPDATE packages SET is_active = 0 WHERE id = ? AND company_id = ?', [req.params.id, req.session.companyId]);
+        await db.execute('UPDATE packages SET is_active = 0 WHERE id = ? AND company_id = ?', [req.params.id, req.user.companyId]);
         res.json({ success: true, message: 'Package deleted successfully' });
     } catch (error) {
         console.error('Delete package error:', error);
@@ -142,7 +136,7 @@ router.get('/tier/:tier', requireCompany, async (req, res) => {
       SELECT * FROM packages 
       WHERE company_id = ? AND tier = ? AND is_active = 1
       ORDER BY bhk_type
-    `, [req.session.companyId, req.params.tier]);
+    `, [req.user.companyId, req.params.tier]);
         res.json(packages);
     } catch (error) {
         console.error('Get packages by tier error:', error);

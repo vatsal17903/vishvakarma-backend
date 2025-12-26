@@ -1,15 +1,9 @@
 import express from 'express';
 import { db } from '../database/init.js';
 
-const router = express.Router();
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
 
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-    if (!req.session.companyId) {
-        return res.status(400).json({ error: 'Please select a company first' });
-    }
-    next();
-};
+const router = express.Router();
 
 // Generate bill number
 async function generateBillNumber(companyCode) {
@@ -43,7 +37,7 @@ router.get('/', requireCompany, async (req, res) => {
       LEFT JOIN clients c ON q.client_id = c.id
       WHERE b.company_id = ?
       ORDER BY b.created_at DESC
-    `, [req.session.companyId]);
+    `, [req.user.companyId]);
         res.json(bills);
     } catch (error) {
         console.error('Get bills error:', error);
@@ -63,7 +57,7 @@ router.get('/recent', requireCompany, async (req, res) => {
       WHERE b.company_id = ?
       ORDER BY b.created_at DESC
       LIMIT ?
-    `, [req.session.companyId, limit]);
+    `, [req.user.companyId, limit]);
         res.json(bills);
     } catch (error) {
         console.error('Get recent bills error:', error);
@@ -81,7 +75,7 @@ router.get('/:id', requireCompany, async (req, res) => {
       LEFT JOIN quotations q ON b.quotation_id = q.id
       LEFT JOIN clients c ON q.client_id = c.id
       WHERE b.id = ? AND b.company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const bill = bills[0];
 
@@ -120,7 +114,7 @@ router.post('/', requireCompany, async (req, res) => {
         // Get quotation
         const [quotations] = await db.execute(`
       SELECT * FROM quotations WHERE id = ? AND company_id = ?
-    `, [quotation_id, req.session.companyId]);
+    `, [quotation_id, req.user.companyId]);
 
         const quotation = quotations[0];
 
@@ -141,7 +135,7 @@ router.post('/', requireCompany, async (req, res) => {
         }
 
         // Generate bill number
-        const bill_number = await generateBillNumber(req.session.companyCode);
+        const bill_number = await generateBillNumber(req.user.companyCode);
 
         const [result] = await db.execute(`
       INSERT INTO bills (
@@ -150,7 +144,7 @@ router.post('/', requireCompany, async (req, res) => {
         grand_total, paid_amount, balance_amount, status, notes
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-            req.session.companyId, quotation_id, bill_number, date || new Date().toISOString().split('T')[0],
+            req.user.companyId, quotation_id, bill_number, date || new Date().toISOString().split('T')[0],
             quotation.taxable_amount, quotation.cgst_percent, quotation.cgst_amount,
             quotation.sgst_percent, quotation.sgst_amount, quotation.total_tax,
             quotation.grand_total, paid_amount, balance_amount, status, notes
@@ -175,7 +169,7 @@ router.put('/:id', requireCompany, async (req, res) => {
         await db.execute(`
       UPDATE bills SET date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND company_id = ?
-    `, [date, notes, req.params.id, req.session.companyId]);
+    `, [date, notes, req.params.id, req.user.companyId]);
 
         const [bills] = await db.execute('SELECT * FROM bills WHERE id = ?', [req.params.id]);
         res.json(bills[0]);
@@ -188,7 +182,7 @@ router.put('/:id', requireCompany, async (req, res) => {
 // Delete bill
 router.delete('/:id', requireCompany, async (req, res) => {
     try {
-        const [bills] = await db.execute('SELECT * FROM bills WHERE id = ? AND company_id = ?', [req.params.id, req.session.companyId]);
+        const [bills] = await db.execute('SELECT * FROM bills WHERE id = ? AND company_id = ?', [req.params.id, req.user.companyId]);
         const bill = bills[0];
 
         if (!bill) {

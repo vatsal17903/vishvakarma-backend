@@ -1,15 +1,9 @@
 import express from 'express';
 import { db } from '../database/init.js';
 
-const router = express.Router();
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
 
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-    if (!req.session.companyId) {
-        return res.status(400).json({ error: 'Please select a company first' });
-    }
-    next();
-};
+const router = express.Router();
 
 // Get all sqft default items
 router.get('/', requireCompany, async (req, res) => {
@@ -31,7 +25,7 @@ router.get('/', requireCompany, async (req, res) => {
             SELECT * FROM sqft_defaults 
             WHERE company_id = ? 
             ORDER BY section_name, sort_order
-        `, [req.session.companyId]);
+        `, [req.user.companyId]);
 
         res.json({
             items: items.map(i => ({
@@ -119,7 +113,7 @@ async function getLegacyItems(req, res) {
 // Save sqft default items
 router.put('/', requireCompany, async (req, res) => {
     const { items } = req.body;
-    const companyId = req.session.companyId;
+    const companyId = req.user.companyId;
 
     try {
         // Create table if not exists

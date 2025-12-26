@@ -3,16 +3,10 @@ import PDFDocument from 'pdfkit';
 import { db } from '../database/init.js';
 import { renderWhyChooseUs } from './pdf_helpers.js';
 
+import { authenticateToken, requireCompany } from '../middleware/auth.js';
+
 const router = express.Router();
 
-
-// Middleware to check company selection
-const requireCompany = (req, res, next) => {
-    if (!req.session.companyId) {
-        return res.status(400).json({ error: 'Please select a company first' });
-    }
-    next();
-};
 
 // Helper to format currency (using Rs. for PDF compatibility - ₹ symbol not supported in Helvetica)
 function formatCurrency(amount) {
@@ -45,7 +39,7 @@ router.get('/quotation/:id', requireCompany, async (req, res) => {
       LEFT JOIN clients c ON q.client_id = c.id
       LEFT JOIN companies comp ON q.company_id = comp.id
       WHERE q.id = ? AND q.company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const quotation = quotations[0];
 
@@ -371,7 +365,7 @@ router.get('/receipt/:id', requireCompany, async (req, res) => {
       LEFT JOIN clients c ON q.client_id = c.id
       LEFT JOIN companies comp ON r.company_id = comp.id
       WHERE r.id = ? AND r.company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const receipt = receipts[0];
 
@@ -484,7 +478,7 @@ router.get('/bill/:id', requireCompany, async (req, res) => {
       LEFT JOIN clients c ON q.client_id = c.id
       LEFT JOIN companies comp ON b.company_id = comp.id
       WHERE b.id = ? AND b.company_id = ?
-    `, [req.params.id, req.session.companyId]);
+    `, [req.params.id, req.user.companyId]);
 
         const bill = bills[0];
 
@@ -634,11 +628,11 @@ router.get('/whatsapp/:type/:id', requireCompany, async (req, res) => {
         FROM quotations q
         LEFT JOIN clients c ON q.client_id = c.id
         WHERE q.id = ? AND q.company_id = ?
-      `, [id, req.session.companyId]);
+      `, [id, req.user.companyId]);
             document = docs[0];
 
             if (document) {
-                message = `Dear ${document.client_name},\n\nPlease find your quotation:\n\nQuotation No: ${document.quotation_number}\nTotal Amount: ${formatCurrency(document.grand_total)}\n\nThank you for your business!\n\n- ${req.session.companyName}`;
+                message = `Dear ${document.client_name},\n\nPlease find your quotation:\n\nQuotation No: ${document.quotation_number}\nTotal Amount: ${formatCurrency(document.grand_total)}\n\nThank you for your business!\n\n- ${req.user.companyName}`;
             }
         } else if (type === 'receipt') {
             const [docs] = await db.execute(`
@@ -647,11 +641,11 @@ router.get('/whatsapp/:type/:id', requireCompany, async (req, res) => {
         LEFT JOIN quotations q ON r.quotation_id = q.id
         LEFT JOIN clients c ON q.client_id = c.id
         WHERE r.id = ? AND r.company_id = ?
-      `, [id, req.session.companyId]);
+      `, [id, req.user.companyId]);
             document = docs[0];
 
             if (document) {
-                message = `Dear ${document.client_name},\n\nPayment Received:\n\nReceipt No: ${document.receipt_number}\nAmount: ${formatCurrency(document.amount)}\n\nThank you!\n\n- ${req.session.companyName}`;
+                message = `Dear ${document.client_name},\n\nPayment Received:\n\nReceipt No: ${document.receipt_number}\nAmount: ${formatCurrency(document.amount)}\n\nThank you!\n\n- ${req.user.companyName}`;
             }
         } else if (type === 'bill') {
             const [docs] = await db.execute(`
@@ -660,11 +654,11 @@ router.get('/whatsapp/:type/:id', requireCompany, async (req, res) => {
         LEFT JOIN quotations q ON b.quotation_id = q.id
         LEFT JOIN clients c ON q.client_id = c.id
         WHERE b.id = ? AND b.company_id = ?
-      `, [id, req.session.companyId]);
+      `, [id, req.user.companyId]);
             document = docs[0];
 
             if (document) {
-                message = `Dear ${document.client_name},\n\nInvoice Details:\n\nInvoice No: ${document.bill_number}\nTotal: ${formatCurrency(document.grand_total)}\nBalance Due: ${formatCurrency(document.balance_amount)}\n\nThank you!\n\n- ${req.session.companyName}`;
+                message = `Dear ${document.client_name},\n\nInvoice Details:\n\nInvoice No: ${document.bill_number}\nTotal: ${formatCurrency(document.grand_total)}\nBalance Due: ${formatCurrency(document.balance_amount)}\n\nThank you!\n\n- ${req.user.companyName}`;
             }
         }
 
